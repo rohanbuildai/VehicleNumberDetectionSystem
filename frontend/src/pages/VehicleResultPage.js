@@ -28,18 +28,28 @@ import styles from './VehicleResultPage.module.css';
 export default function VehicleResultPage() {
   const navigate = useNavigate();
   const { user } = useSelector((s) => s.auth);
-  const { currentDetection } = useSelector((s) => s.detection);
+  const { currentDetection, detections } = useSelector((s) => s.detection);
   
   const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   
-  // Use detection from Redux or URL param
+  // Use detection from Redux - check current first, then recent detections
   useEffect(() => {
+    console.log('VehicleResultPage - currentDetection:', currentDetection);
+    console.log('VehicleResultPage - detections:', detections?.slice(0, 3));
+    
+    // Use the most recent completed detection
     if (currentDetection?.detectionResults) {
       setResult(currentDetection);
+    } else if (detections && detections.length > 0) {
+      // Find the most recent completed one
+      const latest = detections.find(d => d.status === 'completed' && d.detectionResults);
+      if (latest) {
+        setResult(latest);
+      }
     }
-  }, [currentDetection]);
+  }, [currentDetection, detections]);
   
   // Manual search
   const handleSearch = async (e) => {

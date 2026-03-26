@@ -138,6 +138,10 @@ export default function AIDetectionPage() {
 
   // Also use currentDetection from Redux (updated by polling)
   useEffect(() => {
+    console.log('currentDetection:', currentDetection);
+    console.log('detectionResults:', currentDetection?.detectionResults);
+    console.log('vehicleDetails:', currentDetection?.detectionResults?.vehicleDetails);
+    
     if (currentDetection && currentDetection.detectionResults) {
       setResult(currentDetection);
     }

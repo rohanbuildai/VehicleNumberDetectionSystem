@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector } from 'react-redux'; 
 import { 
   Car, 
   User, 
@@ -19,7 +19,8 @@ import {
   XCircle,
   AlertTriangle,
   ArrowLeft,
-  Search
+  Search,
+  Loader
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -33,23 +34,48 @@ export default function VehicleResultPage() {
   const [searchInput, setSearchInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
   
-  // Use detection from Redux - check current first, then recent detections
+  // Fetch latest detection from API on mount
   useEffect(() => {
-    console.log('VehicleResultPage - currentDetection:', currentDetection);
-    console.log('VehicleResultPage - detections:', detections?.slice(0, 3));
+    const fetchLatestDetection = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        // Get latest detection from API
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api/v1'}/detection?limit=1`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        if (response.data.data && response.data.data.length > 0) {
+          const latest = response.data.data[0];
+          console.log('Fetched latest detection:', latest);
+          setResult(latest);
+        }
+      } catch (err) {
+        console.error('Failed to fetch detection:', err);
+        setFetchError(err.message);
+      }
+    };
     
-    // Use the most recent completed detection
-    if (currentDetection?.detectionResults) {
-      setResult(currentDetection);
-    } else if (detections && detections.length > 0) {
-      // Find the most recent completed one
-      const latest = detections.find(d => d.status === 'completed' && d.detectionResults);
-      if (latest) {
-        setResult(latest);
+    fetchLatestDetection();
+  }, []);
+  
+  // Also check Redux as fallback
+  useEffect(() => {
+    if (!result) {
+      if (currentDetection?.detectionResults) {
+        setResult(currentDetection);
+      } else if (detections && detections.length > 0) {
+        setResult(detections[0]);
       }
     }
-  }, [currentDetection, detections]);
+  }, [currentDetection, detections, result]);
+  
+  console.log('VehicleResultPage - result:', result);
+  console.log('VehicleResultPage - vehicleDetails:', result?.detectionResults?.vehicleDetails);
   
   // Manual search
   const handleSearch = async (e) => {

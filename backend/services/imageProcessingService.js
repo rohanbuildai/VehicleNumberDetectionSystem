@@ -397,6 +397,119 @@ class ImageProcessingService {
       type: 'converted',
     };
   }
+
+  // ─── Smart Processing Agent Methods ─────────────────────────────────────────
+
+  /**
+   * Resize image
+   */
+  async resizeImage(inputPath, width, height) {
+    const filename = `resized_${uuidv4()}.jpg`;
+    const outputPath = path.join(this.outputDir, filename);
+
+    const info = await sharp(inputPath)
+      .resize(width, height, { fit: 'inside', withoutEnlargement: false })
+      .jpeg({ quality: 90 })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
+
+  /**
+   * Adjust brightness
+   */
+  async adjustBrightness(inputPath, factor = 1.0) {
+    const filename = `brightness_${uuidv4()}.jpg`;
+    const outputPath = path.join(this.outputDir, filename);
+
+    // factor > 1 brightens, factor < 1 darkens
+    const offset = (factor - 1) * 100;
+
+    const info = await sharp(inputPath)
+      .linear(factor, offset)
+      .jpeg({ quality: 90 })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
+
+  /**
+   * Adjust contrast
+   */
+  async adjustContrast(inputPath, factor = 1.0) {
+    const filename = `contrast_${uuidv4()}.jpg`;
+    const outputPath = path.join(this.outputDir, filename);
+
+    // Factor > 1 increases contrast, factor < 1 decreases
+    const intercept = (1 - factor) * 128;
+
+    const info = await sharp(inputPath)
+      .linear(factor, intercept)
+      .jpeg({ quality: 90 })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
+
+  /**
+   * Reduce noise (median filter)
+   */
+  async reduceNoise(inputPath) {
+    const filename = `denoised_${uuidv4()}.jpg`;
+    const outputPath = path.join(this.outputDir, filename);
+
+    const info = await sharp(inputPath)
+      .median(3)
+      .jpeg({ quality: 90 })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
+
+  /**
+   * Sharpen image
+   */
+  async sharpenImage(inputPath) {
+    const filename = `sharpened_${uuidv4()}.jpg`;
+    const outputPath = path.join(this.outputDir, filename);
+
+    const info = await sharp(inputPath)
+      .sharpen({ sigma: 1.5, m1: 0.5, m2: 0.1 })
+      .jpeg({ quality: 90 })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
+
+  /**
+   * Convert to grayscale
+   */
+  async convertToGrayscale(inputPath) {
+    const filename = `gray_${uuidv4()}.jpg`;
+    const outputPath = path.join(this.outputDir, filename);
+
+    const info = await sharp(inputPath)
+      .grayscale()
+      .jpeg({ quality: 90 })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
+
+  /**
+   * Normalize image (auto levels)
+   */
+  async normalizeImage(inputPath) {
+    const filename = `normalized_${uuidv4()}.jpg`;
+    const outputPath = path.join(this.outputDir, filename);
+
+    const info = await sharp(inputPath)
+      .normalise()
+      .jpeg({ quality: 90 })
+      .toFile(outputPath);
+
+    return outputPath;
+  }
 }
 
 module.exports = new ImageProcessingService();

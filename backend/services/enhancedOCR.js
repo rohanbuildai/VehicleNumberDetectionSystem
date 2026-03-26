@@ -13,9 +13,11 @@ const logger = require('../config/logger');
 class AIDetectionService {
   constructor() {
     this.tempDir = 'uploads/temp';
-    // Plate Recognizer API - highly accurate AI-based detection
+    // Load env vars directly at startup
     this.apiUrl = process.env.PLATERECOGNIZER_API_URL || 'https://api.platerecognizer.com/v1/plate-reader/';
     this.apiToken = process.env.PLATERECOGNIZER_TOKEN || '';
+    
+    logger.info(`AI Detection init - Token configured: ${this.apiToken ? 'YES' : 'NO'}`);
   }
 
   /**
@@ -24,8 +26,10 @@ class AIDetectionService {
   async detectPlates(imagePath, options = {}) {
     const startTime = Date.now();
     
+    logger.info(`Detect called - Token: ${this.apiToken ? 'SET' : 'NOT SET'}`);
+    
     // If API is configured, use it
-    if (this.apiToken) {
+    if (this.apiToken && this.apiToken.trim().length > 0) {
       return this.detectWithAPI(imagePath, startTime);
     }
     

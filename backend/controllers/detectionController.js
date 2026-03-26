@@ -78,6 +78,7 @@ exports.detectPlate = asyncHandler(async (req, res, next) => {
       // Step 3: Simple annotation if plates found
       let processedImages = [];
       let annotatedResult = null;
+      let vehicleDetails = [];
       
       if (detectionData.plates.length > 0 && options.outputAnnotated) {
         try {
@@ -88,7 +89,24 @@ exports.detectPlate = asyncHandler(async (req, res, next) => {
         }
       }
 
-      // Step 4: Crop plates if found
+      // Step 4: Fetch government vehicle details for each detected plate
+      if (detectionData.plates.length > 0) {
+        io?.emitDetectionProgress(userId, { jobId, stage: 'fetching_vehicle_data', progress: 80 });
+        
+        for (const plate of detectionData.plates) {
+          try {
+            const govData = await fetchVehicleDetails(plate.plateText);
+            vehicleDetails.push({
+              plateNumber: plate.plateText,
+              ...govData.data
+            });
+          } catch (govErr) {
+            logger.warn(`Government lookup failed for ${plate.plateText}:`, govErr.message);
+          }
+        }
+      }
+
+      // Step 5: Crop plates if found
       if (detectionData.plates.length > 0 && options.outputCroppedPlates) {
         for (const plate of detectionData.plates) {
           if (plate.boundingBox) {
@@ -112,11 +130,11 @@ exports.detectPlate = asyncHandler(async (req, res, next) => {
         detectionResults: {
           platesDetected: detectionData.plates.length,
           plates: detectionData.plates,
-          vehicleDetails: [],
+          vehicleDetails: vehicleDetails,
           processingMetadata: {
             algorithmsUsed: detectionData.algorithmsUsed || [],
             ocrEngine: detectionData.ocrEngine,
-            detectionModel: 'PlateDetect-v2',
+            detectionModel: 'AI-Plate-Recognizer',
           },
         },
         performance: {

@@ -52,6 +52,26 @@ export default function VehicleResultPage() {
         if (response.data.data && response.data.data.length > 0) {
           const latest = response.data.data[0];
           console.log('Fetched latest detection:', latest);
+          
+          // If no vehicle details, fetch them
+          if (latest.detectionResults?.plates?.length > 0 && !latest.detectionResults?.vehicleDetails?.length) {
+            const plate = latest.detectionResults.plates[0].plateText;
+            console.log('Fetching vehicle details for:', plate);
+            
+            try {
+              const lookupRes = await axios.get(
+                `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api/v1'}/detection/lookup/${plate}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              
+              if (lookupRes.data.success) {
+                latest.detectionResults.vehicleDetails = [lookupRes.data.data];
+              }
+            } catch (lookupErr) {
+              console.log('Could not fetch vehicle details from API');
+            }
+          }
+          
           setResult(latest);
         }
       } catch (err) {

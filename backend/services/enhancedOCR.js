@@ -42,9 +42,13 @@ class AIDetectionService {
    */
   async detectWithAPI(imagePath, startTime) {
     try {
+      logger.info(`API URL: ${this.apiUrl}`);
+      logger.info(`Token first 10 chars: ${this.apiToken.substring(0, 10)}`);
+      
       // Read image as base64
       const imageBuffer = await fs.readFile(imagePath);
       const base64Image = imageBuffer.toString('base64');
+      logger.info(`Image size: ${imageBuffer.length} bytes`);
       
       const response = await axios.post(this.apiUrl, {
         image: base64Image
@@ -56,6 +60,7 @@ class AIDetectionService {
         timeout: 30000
       });
       
+      logger.info(`API Response status: ${response.status}`);
       const plates = response.data.results || [];
       
       if (plates.length > 0) {
@@ -84,6 +89,7 @@ class AIDetectionService {
       
     } catch (error) {
       logger.error('AI detection failed:', error.message);
+      logger.error('Error details:', error.response?.data || error.message);
       return this.detectLocalFallback(imagePath, startTime);
     }
   }

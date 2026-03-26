@@ -42,7 +42,7 @@ const defaultOptions = {
 
 export default function AIDetectionPage() {
   const dispatch   = useDispatch();
-  const { submitting, activeJob, jobStatus, jobProgress } =
+  const { submitting, activeJob, jobStatus, jobProgress, currentDetection } =
     useSelector((s) => s.detection);
   const { user } = useSelector((s) => s.auth);
 
@@ -136,10 +136,12 @@ export default function AIDetectionPage() {
     };
   }, [activeJob, dispatch, startPolling, stopPolling, user]);
 
-  // Stop polling when result arrives
+  // Also use currentDetection from Redux (updated by polling)
   useEffect(() => {
-    if (result) stopPolling();
-  }, [result, stopPolling]);
+    if (currentDetection && currentDetection.detectionResults) {
+      setResult(currentDetection);
+    }
+  }, [currentDetection]);
 
   // Dropzone
   const onDrop = useCallback((accepted) => {

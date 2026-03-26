@@ -1,0 +1,135 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  padding: 24px;
+  position: relative;
+}
+.bgGrid {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+.card {
+  width: 100%; max-width: 420px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  position: relative;
+  z-index: 1;
+  animation: fade-in 0.4s ease;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+  font-size: 17px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 32px;
+}
+.logoIcon {
+  width: 34px; height: 34px;
+  background: var(--accent-dim);
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+}
+.ai { color: var(--accent); font-family: var(--font-mono); font-size: 11px; }
+
+.title { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+.subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
+
+.errorBanner {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,71,87,0.1);
+  border: 1px solid rgba(255,71,87,0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: var(--danger);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.form { display: flex; flex-direction: column; gap: 20px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+
+.inputWrap {
+  position: relative; display: flex; align-items: center;
+}
+.inputIcon {
+  position: absolute; left: 14px;
+  color: var(--text-muted); pointer-events: none;
+}
+.input {
+  width: 100%; padding: 12px 16px 12px 40px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-sans); font-size: 14px;
+  outline: none; transition: var(--transition);
+}
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.input::placeholder { color: var(--text-muted); }
+
+.eyeBtn {
+  position: absolute; right: 12px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 4px;
+  transition: var(--transition);
+}
+.eyeBtn:hover { color: var(--accent); }
+
+.forgotWrap { margin-top: 6px; }
+.forgot {
+  font-size: 12px; color: var(--accent); text-decoration: none;
+}
+.forgot:hover { text-decoration: underline; }
+
+/* Strength bar */
+.strengthBar {
+  display: flex; align-items: center; gap: 8px; margin-top: 6px;
+}
+.strengthFill {
+  flex: 1; height: 3px; border-radius: 2px; transition: var(--transition);
+}
+.strengthBar span { font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; }
+.weak { background: var(--danger); color: var(--danger); width: 33.33%; }
+.medium { background: var(--warning); color: var(--warning); width: 66.66%; }
+.strong { background: var(--success); color: var(--success); width: 100%; }
+
+/* Perks */
+.perks { display: flex; flex-direction: column; gap: 6px; }
+.perk {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text-secondary);
+}
+.perk svg { color: var(--success); flex-shrink: 0; }
+
+.submitBtn {
+  width: 100%; justify-content: center;
+  padding: 13px !important; font-size: 15px !important;
+}
+
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(0,0,0,0.3);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+.switchText {
+  text-align: center; margin-top: 24px;
+  font-size: 13px; color: var(--text-secondary);
+}
+.switchText a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.switchText a:hover { text-decoration: underline; }

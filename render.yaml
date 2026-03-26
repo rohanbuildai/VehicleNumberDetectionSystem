@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: vehicle-number-detection-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node index.js
+    apt:
+      - tesseract-ocr
+      - tesseract-ocr-eng

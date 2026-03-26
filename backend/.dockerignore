@@ -1,0 +1,34 @@
+# Dependencies (installed fresh inside Docker)
+node_modules/
+
+# Environment files (injected via docker-compose)
+.env
+.env.*
+!.env.example
+
+# Upload files (mounted as Docker volume)
+uploads/original/*
+uploads/processed/*
+uploads/plates/*
+
+# Logs (mounted as Docker volume)
+logs/
+
+# Dev/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Git
+.git/
+.gitignore
+
+# Tests
+**/*.test.js
+**/*.spec.js
+coverage/
+
+# Docs
+README.md

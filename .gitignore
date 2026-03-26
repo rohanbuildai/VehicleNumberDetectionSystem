@@ -1,0 +1,40 @@
+# Environment
+.env
+*.env.local
+*.env.production
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+frontend/build/
+frontend/.cache/
+
+# Uploads & logs
+backend/uploads/original/*
+backend/uploads/processed/*
+backend/uploads/plates/*
+!backend/uploads/original/.gitkeep
+!backend/uploads/processed/.gitkeep
+!backend/uploads/plates/.gitkeep
+backend/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Docker
+docker-compose.override.yml
+
+# SSL certs
+nginx/ssl/
+
+# Coverage
+coverage/
+*.lcov

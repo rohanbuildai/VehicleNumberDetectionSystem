@@ -1,0 +1,27 @@
+# Dependencies (installed fresh inside Docker)
+node_modules/
+
+# Build output (built fresh inside Docker)
+build/
+
+# Environment files (injected via docker-compose args)
+.env
+.env.*
+!.env.example
+
+# Dev/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Tests
+src/**/*.test.js
+src/**/*.spec.js
+coverage/

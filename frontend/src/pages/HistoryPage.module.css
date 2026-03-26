@@ -1,0 +1,77 @@
+.page { display: flex; flex-direction: column; gap: 20px; animation: fade-in 0.3s ease; }
+.header { display: flex; align-items: center; justify-content: space-between; }
+.title { font-size: 24px; font-weight: 700; }
+.subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+.filters { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.searchWrap { position: relative; flex: 1; min-width: 200px; }
+.searchIcon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+.searchInput {
+  width: 100%; padding: 10px 12px 10px 36px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-primary);
+  font-family: var(--font-sans); font-size: 13px; outline: none;
+  transition: var(--transition);
+}
+.searchInput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.searchInput::placeholder { color: var(--text-muted); }
+
+.filterGroup { display: flex; align-items: center; gap: 6px; }
+.filterGroup svg { color: var(--text-muted); }
+.filterBtn {
+  padding: 6px 14px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 20px; color: var(--text-secondary); font-size: 12px;
+  cursor: pointer; font-family: var(--font-sans); transition: var(--transition);
+  text-transform: capitalize;
+}
+.filterBtn:hover { border-color: var(--accent); color: var(--accent); }
+.filterBtn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  transition: var(--transition); display: flex; flex-direction: column;
+}
+.card:hover { border-color: var(--border-accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+
+.cardImage { position: relative; height: 160px; background: var(--bg-secondary); overflow: hidden; }
+.cardImage img { width: 100%; height: 100%; object-fit: cover; }
+.noImage { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
+.cardStatus { position: absolute; top: 10px; left: 10px; }
+.favBtn {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(10,15,30,0.8); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px; cursor: pointer; color: var(--text-muted);
+  transition: var(--transition); display: flex; align-items: center;
+  backdrop-filter: blur(8px);
+}
+.favBtn:hover, .favBtn.favActive { color: var(--warning); border-color: var(--warning); }
+
+.cardBody { padding: 14px; flex: 1; }
+.cardPlate { font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: 2px; }
+.cardMeta { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+.cardPlateCount { margin-top: 6px; font-size: 11px; color: var(--text-secondary); }
+
+.cardActions { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--border); }
+
+.loadingGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.skeleton {
+  height: 280px; border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 80px 32px; color: var(--text-muted); text-align: center;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.empty h3 { font-size: 18px; font-weight: 600; color: var(--text-secondary); }
+.empty p { font-size: 13px; }
+
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.pageInfo { font-size: 13px; color: var(--text-secondary); font-family: var(--font-mono); }

@@ -284,6 +284,21 @@ exports.toggleFavorite = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: detection });
 });
 
+// @desc    Lookup vehicle by plate number
+// @route   GET /api/v1/detection/lookup/:plateNumber
+exports.lookupVehicle = asyncHandler(async (req, res, next) => {
+  const { plateNumber } = req.params;
+  
+  // Use the government lookup service
+  const result = await fetchVehicleDetails(plateNumber);
+  
+  res.status(200).json({
+    success: true,
+    data: result.data,
+    source: result.source
+  });
+});
+
 // @desc    Process image only (no detection)
 // @route   POST /api/v1/detection/process
 exports.processImageOnly = asyncHandler(async (req, res, next) => {

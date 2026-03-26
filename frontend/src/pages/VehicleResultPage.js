@@ -83,51 +83,65 @@ export default function VehicleResultPage() {
     if (!searchInput.trim()) return;
     
     setLoading(true);
+    setResult(null); // Clear previous result
+    setFetchError(null);
+    
+    const plate = searchInput.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    
     try {
-      // Try to call vehicle lookup API (if endpoint exists)
-      // For now, directly call government lookup mock
+      // Try to call vehicle lookup API
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api/v1'}/detection/lookup/${searchInput.trim()}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api/v1'}/detection/lookup/${plate}`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         }
       );
       
       console.log('Search response:', response.data);
+      
+      if (response.data.success && response.data.data) {
+        setResult({
+          detectionResults: {
+            plates: [{ plateText: plate, confidence: 1 }],
+            vehicleDetails: [response.data.data]
+          }
+        });
+      }
     } catch (err) {
-      // If API not configured, use mock data directly
-      console.log('Using mock data for:', searchInput);
+      console.log('API call failed, using mock data for:', plate);
       
-      // Get mock data from the lookup function on frontend
-      const mockPlates = ['MH01AB1234', 'DL01CD5678', 'KA02EF9012'];
-      const plateKey = searchInput.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      // Use mock data directly in frontend
+      const mockPlates = {
+        'MH01AB1234': { ownerName: 'Rahul Sharma', ownerAddress: 'Flat No. 402, Green Valley Apartments, Andheri East, Mumbai - 400069', manufacturer: 'Maruti Suzuki', model: 'Swift VXi', color: 'White' },
+        'DL01CD5678': { ownerName: 'Priya Singh', ownerAddress: 'H.No. 123, Sector 15, Rohini, New Delhi - 110089', manufacturer: 'Honda', model: 'City VX', color: 'Silver' },
+        'KA02EF9012': { ownerName: 'Amit Kumar', ownerAddress: 'Villa No. 7, Manyata Tech Park, Hebbal, Bangalore - 560024', manufacturer: 'Tata Motors', model: 'Nexon EV', color: 'Blue' }
+      };
       
-      // Simulate mock response
+      const mockData = mockPlates[plate] || { ownerName: 'Data not available', ownerAddress: 'Contact transport authority for details', manufacturer: 'Unknown', model: 'Unknown', color: 'Unknown' };
+      
       setResult({
         detectionResults: {
-          plates: [{ plateText: searchInput.toUpperCase(), confidence: 1 }],
+          plates: [{ plateText: plate, confidence: 1 }],
           vehicleDetails: [{
-            registrationNumber: plateKey,
+            registrationNumber: plate,
             vehicleClass: 'Motor Car (LMV)',
             fuelType: Math.random() > 0.5 ? 'Petrol' : 'Diesel',
             vehicleAge: Math.floor(Math.random() * 10) + 1,
             insuranceValidUpto: '2026-12-31',
             pollutionCertValidUpto: '2025-12-31',
             fitnessValidUpto: '2027-12-31',
-            ownerName: mockPlates.includes(plateKey) ? 'Rahul Sharma' : 'Data not available',
-            ownerAddress: mockPlates.includes(plateKey) 
-              ? 'Flat No. 402, Green Valley Apartments, Mumbai' 
-              : 'Contact transport authority for details',
+            ownerName: mockData.ownerName,
+            ownerAddress: mockData.ownerAddress,
             registrationDate: '2020-01-01',
-            manufacturer: mockPlates.includes(plateKey) ? 'Maruti Suzuki' : 'Unknown',
-            model: mockPlates.includes(plateKey) ? 'Swift VXi' : 'Unknown',
-            color: mockPlates.includes(plateKey) ? 'White' : 'Unknown',
+            manufacturer: mockData.manufacturer,
+            model: mockData.model,
+            color: mockData.color,
             chassisNumber: 'XXXXX' + Math.random().toString(36).substring(2, 10).toUpperCase(),
             engineNumber: 'XXXXX' + Math.random().toString(36).substring(2, 10).toUpperCase(),
             seatingCapacity: 5,
             grossWeight: 1340,
             normType: 'BS VI',
-            note: mockPlates.includes(plateKey) ? '' : 'Demo mode - real data requires government API'
+            note: mockPlates[plate] ? '' : 'Demo mode - real data requires government API'
           }]
         }
       });
@@ -153,8 +167,11 @@ export default function VehicleResultPage() {
     return new Date(dateStr) > new Date();
   };
   
-  const plates = result?.detectionResults?.plates || [];
-  const vehicleDetails = result?.detectionResults?.vehicleDetails || [];
+  const plates = result?.detectionResults?.plates || result?.plates || [];
+  const vehicleDetails = result?.detectionResults?.vehicleDetails || result?.vehicleDetails || [];
+  
+  console.log('plates:', plates);
+  console.log('vehicleDetails:', vehicleDetails);
   
   return (
     <div className={styles.container}>

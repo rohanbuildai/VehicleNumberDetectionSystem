@@ -48,10 +48,10 @@ class AIDetectionService {
       const imageBuffer = await fs.readFile(imagePath);
       logger.info(`Image size: ${imageBuffer.length} bytes`);
       
-      // Send as multipart form data - API expects this format
+      // Send as multipart form data - API expects 'upload' field
       const FormData = require('form-data');
       const form = new FormData();
-      form.append('image', imageBuffer, { filename: 'image.jpg' });
+      form.append('upload', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
       
       const response = await axios.post(this.apiUrl, form, {
         headers: {
@@ -62,6 +62,8 @@ class AIDetectionService {
       });
       
       logger.info(`API Response status: ${response.status}`);
+      logger.info(`API Response data:`, JSON.stringify(response.data).substring(0, 500));
+      
       const plates = response.data.results || [];
       
       if (plates.length > 0) {

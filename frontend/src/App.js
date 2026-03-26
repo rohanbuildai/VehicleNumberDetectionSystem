@@ -16,6 +16,7 @@ import HistoryPage from './pages/HistoryPage';
 import VehiclesPage from './pages/VehiclesPage';
 import ProfilePage from './pages/ProfilePage';
 import DetectionDetailPage from './pages/DetectionDetailPage';
+import VehicleResultPage from './pages/VehicleResultPage';
 
 // Layout
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -53,6 +54,7 @@ function App() {
           <Route path="/history/:id" element={<DetectionDetailPage />} />
           <Route path="/vehicles" element={<VehiclesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/vehicle-result" element={<VehicleResultPage />} />
         </Route>
       </Route>
 

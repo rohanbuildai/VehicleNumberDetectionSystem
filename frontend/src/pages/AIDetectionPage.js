@@ -6,6 +6,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
+import { useNavigate } from 'react-router-dom';
 import {
   submitDetection, setJobProgress, setJobResult,
   clearActiveJob, pollJobStatus,
@@ -42,6 +43,7 @@ const defaultOptions = {
 
 export default function AIDetectionPage() {
   const dispatch   = useDispatch();
+  const navigate = useNavigate();
   const { submitting, activeJob, jobStatus, jobProgress, currentDetection } =
     useSelector((s) => s.detection);
   const { user } = useSelector((s) => s.auth);
@@ -421,6 +423,16 @@ export default function AIDetectionPage() {
                 <VehicleDetailsPanel 
                   vehicleDetails={result.detectionResults?.vehicleDetails} 
                 />
+
+                {/* View Full Details Button */}
+                {result.detectionResults?.plates?.length > 0 && (
+                  <button 
+                    className={styles.viewDetailsBtn}
+                    onClick={() => navigate('/vehicle-result')}
+                  >
+                    View Full Vehicle Details →
+                  </button>
+                )}
 
                 {/* Image quality */}
                 {result.detectionResults?.imageQuality && (

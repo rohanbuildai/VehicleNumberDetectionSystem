@@ -1,5 +1,5 @@
 /**
- * Enhanced OCR Service - Balanced accuracy and speed
+ * Enhanced OCR Service - Simple and reliable
  */
 
 const tesseract = require('tesseract.js');
@@ -18,56 +18,35 @@ class EnhancedOCRService {
    * Detect plates - main entry
    */
   async detectPlates(imagePath, options = {}) {
-    return this.detectPlatesAccurate(imagePath, options);
+    return this.detectPlatesSimple(imagePath, options);
   }
 
   /**
-   * Accurate detection with smart preprocessing
+   * Simple and reliable detection
    */
-  async detectPlatesAccurate(inputPath, options = {}) {
+  async detectPlatesSimple(inputPath, options = {}) {
     const startTime = Date.now();
     
     try {
-      // Step 1: Create enhanced preprocessing - multiple versions
-      const preprocessedPaths = await this.createEnhancedPreprocessing(inputPath);
+      // Simple preprocessing - just resize and grayscale
+      const preprocessed = await this.preprocessSimple(inputPath);
       
-      // Step 2: Run OCR on each preprocessing version
-      let allPlates = [];
-      let bestConfidence = 0;
+      // OCR with multiple PSM modes to catch different plate formats
+      const result = await this.ocrWithMultiplePSM(preprocessed);
       
-      for (const prepPath of preprocessedPaths) {
-        try {
-          // Use LSTM for accuracy (OEM 3)
-          const worker = await tesseract.createWorker('eng', 3);
-          await worker.setParameters({
-            tessedit_pageseg_mode: 6,
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789- '
-          });
-          
-          const { data } = await worker.recognize(prepPath);
-          await worker.terminate();
-          
-          const plates = this.parseResults(data.text, data.confidence / 100);
-          
-          if (plates.length > 0 && plates[0].confidence > bestConfidence) {
-            bestConfidence = plates[0].confidence;
-            allPlates = plates;
-          }
-        } catch (e) {
-          // Continue
-        }
-        
-        // Cleanup
-        try { await fs.unlink(prepPath); } catch(e) {}
-      }
+      // Parse results
+      const plates = this.parseResults(result.text, result.confidence);
       
-      if (allPlates.length > 0) {
-        logger.info(`Found: ${allPlates[0].plateText} (${(allPlates[0].confidence*100).toFixed(0)}%) in ${Date.now()-startTime}ms`);
+      // Cleanup
+      try { await fs.unlink(preprocessed); } catch(e) {}
+      
+      if (plates.length > 0) {
+        logger.info(`Found: ${plates[0].plateText} in ${Date.now()-startTime}ms`);
         return {
-          plates: [allPlates[0]],
+          plates: [plates[0]],
           detectionTimeMs: Date.now() - startTime,
-          algorithmsUsed: ['enhanced-preprocessing', 'lstm-ocr'],
-          ocrEngine: 'tesseract-lstm',
+          algorithmsUsed: ['preprocessing', 'multi-psm-ocr'],
+          ocrEngine: 'tesseract',
         };
       }
       
@@ -80,89 +59,87 @@ class EnhancedOCRService {
   }
 
   /**
-   * Create multiple enhanced preprocessing versions for better accuracy
+   * Simple preprocessing - works for most images
    */
-  async createEnhancedPreprocessing(inputPath) {
-    const paths = [];
+  async preprocessSimple(inputPath) {
+    const outputPath = path.join(this.tempDir, `prep_${uuidv4()}.jpg`);
     await fs.mkdir(this.tempDir, { recursive: true });
     
-    // Version 1: High contrast (good for clear plates)
-    const v1 = path.join(this.tempDir, `v1_${uuidv4()}.jpg`);
     await sharp(inputPath)
       .grayscale()
-      .normalize()
-      .linear(2.0, -30)
-      .toFile(v1);
-    paths.push(v1);
+      .resize(1500, null, { fit: 'inside' })
+      .toFile(outputPath);
     
-    // Version 2: Sharpened (good for blurry images)
-    const v2 = path.join(this.tempDir, `v2_${uuidv4()}.jpg`);
-    await sharp(inputPath)
-      .grayscale()
-      .sharpen({ sigma: 2.0, m1: 1.0, m2: 0.5 })
-      .linear(1.5, -20)
-      .toFile(v2);
-    paths.push(v2);
-    
-    // Version 3: Binarized (good for high contrast plates)
-    const v3 = path.join(this.tempDir, `v3_${uuidv4()}.jpg`);
-    await sharp(inputPath)
-      .grayscale()
-      .normalize()
-      .linear(2.5, -50)
-      .threshold(128)
-      .toFile(v3);
-    paths.push(v3);
-    
-    return paths;
+    return outputPath;
   }
 
   /**
-   * Parse OCR results with flexible pattern matching
+   * Try multiple PSM modes for better detection
+   */
+  async ocrWithMultiplePSM(imagePath) {
+    const psms = [6, 4, 3]; // Different page segmentation modes
+    let bestText = '';
+    let bestConfidence = 0;
+    
+    for (const psm of psms) {
+      try {
+        const worker = await tesseract.createWorker('eng', 1);
+        await worker.setParameters({
+          tessedit_pageseg_mode: psm
+        });
+        
+        const { data } = await worker.recognize(imagePath);
+        await worker.terminate();
+        
+        // Keep the result with most text
+        if (data.text.trim().length > bestText.trim().length) {
+          bestText = data.text;
+          bestConfidence = data.confidence;
+        }
+      } catch (e) {
+        // Continue to next PSM
+      }
+    }
+    
+    return { text: bestText, confidence: bestConfidence / 100 };
+  }
+
+  /**
+   * Parse OCR results - more flexible matching
    */
   parseResults(text, confidence) {
     const plates = [];
     const lines = text.split('\n').filter(l => l.trim().length > 0);
     
     for (const line of lines) {
-      const cleaned = line.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+      // Keep some special chars for now
+      const cleaned = line.toUpperCase().replace(/[^A-Z0-9\s\-]/g, '').trim();
       
-      if (cleaned.length < 4 || cleaned.length > 15) continue;
+      if (cleaned.length < 3 || cleaned.length > 20) continue;
       
-      // Multiple patterns - more flexible
-      const patterns = [
-        /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/,   // MH01AB1234
-        /^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/,      // MH12AB1234  
-        /^[A-Z]{2}[0-9]{1,2}[A-Z][0-9]{4}$/,       // MH1A1234
-        /^[A-Z]{2}[0-9]{2}[0-9]{4}$/,              // MH121234
-        /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{3}$/,  // MH01AB123
-        /^[A-Z]{2}[0-9]{2}[A-Z][0-9]{3}$/,        // MH12A123
-        /^[A-Z0-9]{5,15}$/i,                        // Generic
-      ];
+      // Very flexible patterns - accept most alphanumeric combinations
+      const cleanedNoSpace = cleaned.replace(/\s/g, '');
       
-      let matched = false;
-      for (const pattern of patterns) {
-        if (pattern.test(cleaned)) {
-          matched = true;
-          break;
-        }
-      }
+      // If it looks like a plate (letters + numbers mixed), accept it
+      const hasLetters = /[A-Z]/.test(cleanedNoSpace);
+      const hasNumbers = /[0-9]/.test(cleanedNoSpace);
+      const isReasonable = cleanedNoSpace.length >= 5 && cleanedNoSpace.length <= 15;
       
-      if (matched) {
-        const isIndian = cleaned.length >= 5 && /^[A-Z]{2}/.test(cleaned);
+      if (hasLetters && hasNumbers && isReasonable) {
+        const isIndian = /^[A-Z]{2}[0-9]/.test(cleanedNoSpace);
         
         plates.push({
-          plateText: cleaned,
+          plateText: cleanedNoSpace,
           rawText: line,
-          confidence: Math.min(confidence * 1.3, 0.98),
+          confidence: Math.min(0.85, confidence + 0.1),
           boundingBox: { x: 0, y: 0, width: 100, height: 30 },
           isValid: true,
-          region: isIndian ? this.extractState(cleaned) : null,
+          region: isIndian ? this.extractState(cleanedNoSpace) : null,
           validationDetails: { country: isIndian ? 'India' : 'Unknown' },
           country: isIndian ? 'India' : 'Unknown',
         });
         
-        break; // Return best match
+        break;
       }
     }
     
@@ -182,23 +159,27 @@ class EnhancedOCRService {
 
   // Legacy compatibility
   async detectPlatesFast(inputPath, options = {}) {
-    return this.detectPlatesAccurate(inputPath, options);
+    return this.detectPlatesSimple(inputPath, options);
+  }
+
+  async detectPlatesAccurate(inputPath, options = {}) {
+    return this.detectPlatesSimple(inputPath, options);
   }
 
   async detectPlatesOptimized(inputPath, options = {}) {
-    return this.detectPlatesAccurate(inputPath, options);
+    return this.detectPlatesSimple(inputPath, options);
   }
 
   async detectPlatesWithLocalization(inputPath, options = {}) {
-    return this.detectPlatesAccurate(inputPath, options);
+    return this.detectPlatesSimple(inputPath, options);
   }
 
   async detectPlatesUltraAccurate(inputPath, options = {}) {
-    return this.detectPlatesAccurate(inputPath, options);
+    return this.detectPlatesSimple(inputPath, options);
   }
 
   async extractText(imagePath, options = {}) {
-    const result = await this.detectPlatesAccurate(imagePath, options);
+    const result = await this.detectPlatesSimple(imagePath, options);
     if (result.plates.length === 0) {
       return { text: '', confidence: 0, plates: [] };
     }

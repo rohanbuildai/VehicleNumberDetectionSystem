@@ -63,60 +63,40 @@ exports.detectPlate = asyncHandler(async (req, res, next) => {
   });
 
   // Process asynchronously
-  // Small delay so the frontend has time to subscribe to socket events
-  // before we start emitting. HTTP polling is the fallback if this still races.
   setTimeout(async () => {
     try {
       io?.emitDetectionProgress(userId, { jobId, stage: 'analyzing', progress: 15 });
 
-      // Step 1: Image quality analysis
-      const quality = await imageProcessingService.analyzeImageQuality(req.file.path);
-      io?.emitDetectionProgress(userId, { jobId, stage: 'enhancing', progress: 35 });
+      // Step 1: Quick OCR - skip full pipeline for speed
+      io?.emitDetectionProgress(userId, { jobId, stage: 'detecting', progress: 50 });
 
-      // Step 2: Full image processing pipeline
-      const { processedImages, algorithms } = await imageProcessingService.runFullPipeline(req.file.path, options);
-      io?.emitDetectionProgress(userId, { jobId, stage: 'detecting', progress: 55 });
-
-      // Step 3: OCR & plate detection
+      // Step 2: OCR & plate detection - direct, no preprocessing
       const detectionData = await ocrService.detectPlates(req.file.path, options);
+      
       io?.emitDetectionProgress(userId, { jobId, stage: 'annotating', progress: 75 });
 
-      // Step 4: Fetch government vehicle details for each detected plate
-      let vehicleDetails = [];
-      if (detectionData.plates.length > 0) {
-        io?.emitDetectionProgress(userId, { jobId, stage: 'fetching_vehicle_data', progress: 80 });
-        for (const plate of detectionData.plates) {
-          try {
-            const govData = await fetchVehicleDetails(plate.plateText);
-            vehicleDetails.push({
-              plateNumber: plate.plateText,
-              ...govData.data
-            });
-          } catch (govErr) {
-            logger.warn(`Government lookup failed for ${plate.plateText}:`, govErr.message);
-          }
+      // Step 3: Simple annotation if plates found
+      let processedImages = [];
+      let annotatedResult = null;
+      
+      if (detectionData.plates.length > 0 && options.outputAnnotated) {
+        try {
+          annotatedResult = await imageProcessingService.annotateImage(req.file.path, detectionData.plates);
+          processedImages.push(annotatedResult);
+        } catch(e) {
+          logger.warn('Annotation failed:', e.message);
         }
       }
 
-      // Step 5: Annotate image if plates found
-      let annotatedResult = null;
-      if (options.outputAnnotated && detectionData.plates.length > 0) {
-        annotatedResult = await imageProcessingService.annotateImage(req.file.path, detectionData.plates);
-        processedImages.push(annotatedResult);
-      }
-
-      // Step 5: Crop individual plates
-      if (options.outputCroppedPlates && detectionData.plates.length > 0) {
-        for (let i = 0; i < detectionData.plates.length; i++) {
-          const plate = detectionData.plates[i];
+      // Step 4: Crop plates if found
+      if (detectionData.plates.length > 0 && options.outputCroppedPlates) {
+        for (const plate of detectionData.plates) {
           if (plate.boundingBox) {
             try {
               const cropped = await imageProcessingService.cropRegion(req.file.path, plate.boundingBox);
               processedImages.push(cropped);
               plate.plateImageUrl = cropped.url;
-            } catch (cropErr) {
-              logger.warn('Plate crop failed:', cropErr.message);
-            }
+            } catch(e) {}
           }
         }
       }
@@ -132,14 +112,11 @@ exports.detectPlate = asyncHandler(async (req, res, next) => {
         detectionResults: {
           platesDetected: detectionData.plates.length,
           plates: detectionData.plates,
-          vehicleDetails: vehicleDetails,
-          imageQuality: quality,
+          vehicleDetails: [],
           processingMetadata: {
-            algorithmsUsed: [...(algorithms || []), ...detectionData.algorithmsUsed],
+            algorithmsUsed: detectionData.algorithmsUsed || [],
             ocrEngine: detectionData.ocrEngine,
             detectionModel: 'PlateDetect-v2',
-            enhancementsApplied: Object.entries(options)
-              .filter(([, v]) => v).map(([k]) => k),
           },
         },
         performance: {

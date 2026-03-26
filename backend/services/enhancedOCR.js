@@ -37,21 +37,21 @@ class EnhancedOCRService {
       
       logger.info(`Found ${regions.length} potential plate regions`);
       
-      // Step 2: Process each potential region
+      // Step 2: Process each potential region and collect ALL plate candidates
       let allPlates = [];
       
       for (const region of regions) {
         try {
-          // Preprocess the region with multiple methods
+          // Preprocess the region with multiple methods - try quality first
           const preprocessed = await this.preprocessForOCR(region.path, 'quality');
           
           // OCR with multiple PSM modes
           const ocrResult = await this.performOCRWithFallback(preprocessed);
           
-          // Parse results
+          // Parse results - be more lenient to catch all possibilities
           const plates = this.parseOCRResults(ocrResult.text, ocrResult.confidence);
           
-          // Adjust bounding box to original image coordinates
+          // Add region coordinates
           plates.forEach(plate => {
             if (plate.boundingBox) {
               plate.boundingBox.x += region.x;
@@ -76,14 +76,19 @@ class EnhancedOCRService {
         return this.detectPlatesFast(inputPath, options);
       }
       
-      // Remove duplicates
-      const uniquePlates = this.deduplicatePlates(allPlates);
+      // Step 4: Get the BEST single plate with enhanced verification
+      const bestPlate = await this.getBestSinglePlate(allPlates, inputPath);
       
-      logger.info(`Found ${uniquePlates.length} plates in ${Date.now() - startTime}ms`);
+      if (!bestPlate) {
+        return this.detectPlatesFast(inputPath, options);
+      }
+      
+      logger.info(`Found best plate: ${bestPlate.plateText} with ${(bestPlate.confidence * 100).toFixed(1)}% confidence in ${Date.now() - startTime}ms`);
+      
       return {
-        plates: uniquePlates,
+        plates: [bestPlate],
         detectionTimeMs: Date.now() - startTime,
-        algorithmsUsed: ['plate-localization', 'multi-region-ocr', 'preprocessing'],
+        algorithmsUsed: ['plate-localization', 'multi-region-ocr', 'preprocessing', 'best-selection'],
         ocrEngine: 'tesseract',
       };
       
@@ -92,6 +97,138 @@ class EnhancedOCRService {
       // Fallback to basic detection
       return this.detectPlatesFast(inputPath, options);
     }
+  }
+
+  /**
+   * Get the single best plate with enhanced accuracy verification
+   */
+  async getBestSinglePlate(plates, originalImagePath) {
+    if (plates.length === 0) return null;
+    
+    // Sort by confidence
+    const sorted = [...plates].sort((a, b) => b.confidence - a.confidence);
+    
+    // Take top candidates for verification
+    const candidates = sorted.slice(0, 3);
+    
+    if (candidates.length === 1) {
+      return candidates[0];
+    }
+    
+    // If multiple candidates, verify by re-running OCR on a larger crop around best region
+    const best = candidates[0];
+    
+    // Verify the best result with enhanced processing
+    try {
+      // Create a larger, higher-res crop for verification
+      const verificationPath = await this.createVerificationCrop(originalImagePath, best);
+      
+      if (verificationPath) {
+        // Run more thorough OCR on verification crop
+        const verifiedResult = await this.performThoroughOCR(verificationPath);
+        
+        // If verification finds a better result, use it
+        if (verifiedResult && verifiedResult.text && verifiedResult.confidence > best.confidence * 0.8) {
+          const verifiedPlates = this.parseOCRResults(verifiedResult.text, verifiedResult.confidence);
+          if (verifiedPlates.length > 0) {
+            // Clean up
+            try { await fs.unlink(verificationPath); } catch(e) {}
+            return verifiedPlates[0];
+          }
+        }
+        
+        // Cleanup
+        try { await fs.unlink(verificationPath); } catch(e) {}
+      }
+    } catch (err) {
+      logger.debug('Verification failed:', err.message);
+    }
+    
+    // Return the best original candidate
+    return best;
+  }
+
+  /**
+   * Create a verification crop centered on the detected plate
+   */
+  async createVerificationCrop(imagePath, plate) {
+    try {
+      const metadata = await sharp(imagePath).metadata();
+      const bbox = plate.boundingBox || { x: 0, y: 0, width: metadata.width, height: metadata.height };
+      
+      // Create a larger crop area (2x size)
+      const expandFactor = 2.5;
+      const centerX = bbox.x + bbox.width / 2;
+      const centerY = bbox.y + bbox.height / 2;
+      
+      let cropWidth = Math.floor(bbox.width * expandFactor);
+      let cropHeight = Math.floor(bbox.height * expandFactor);
+      
+      // Ensure minimum size
+      cropWidth = Math.max(cropWidth, 200);
+      cropHeight = Math.max(cropHeight, 80);
+      
+      // Ensure we don't go out of bounds
+      let left = Math.floor(centerX - cropWidth / 2);
+      let top = Math.floor(centerY - cropHeight / 2);
+      
+      left = Math.max(0, left);
+      top = Math.max(0, top);
+      cropWidth = Math.min(cropWidth, metadata.width - left);
+      cropHeight = Math.min(cropHeight, metadata.height - top);
+      
+      if (cropWidth <= 0 || cropHeight <= 0) return null;
+      
+      const outputPath = path.join(this.tempDir, `verify_${uuidv4()}.jpg`);
+      await fs.mkdir(this.tempDir, { recursive: true });
+      
+      await sharp(imagePath)
+        .extract({ left, top, width: cropWidth, height: cropHeight })
+        .resize(1200, null, { fit: 'inside' })  // Higher resolution for verification
+        .toFile(outputPath);
+      
+      return outputPath;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Perform thorough OCR with more iterations
+   */
+  async performThoroughOCR(imagePath) {
+    // Try multiple preprocessing approaches and pick the best
+    const approaches = [
+      { quality: 'quality', psm: 6 },
+      { quality: 'quality', psm: 4 },
+      { quality: 'quality', psm: 3 },
+      { quality: 'balanced', psm: 6 },
+    ];
+    
+    let bestResult = null;
+    let bestConfidence = 0;
+    
+    for (const approach of approaches) {
+      try {
+        const preprocessed = await this.preprocessForOCR(imagePath, approach.quality);
+        const result = await this.performOCR(preprocessed, { 
+          psm: approach.psm, 
+          whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789- ',
+          oem: 3 
+        });
+        
+        if (result.text && result.confidence > bestConfidence) {
+          bestConfidence = result.confidence;
+          bestResult = result;
+        }
+        
+        try { await fs.unlink(preprocessed); } catch(e) {}
+      } catch (err) {
+        // Continue to next approach
+      }
+    }
+    
+    return bestResult;
   }
 
   /**
@@ -423,19 +560,30 @@ class EnhancedOCRService {
   }
 
   /**
-   * Remove duplicate plate detections
+   * Remove duplicate plate detections - keep only the best one
    */
   deduplicatePlates(plates) {
-    const seen = new Map();
+    if (plates.length === 0) return [];
+    if (plates.length === 1) return plates;
     
-    for (const plate of plates) {
-      const key = plate.plateText.substring(0, 8); // Use first 8 chars as key
-      if (!seen.has(key) || plate.confidence > seen.get(key).confidence) {
-        seen.set(key, plate);
-      }
-    }
+    // Sort by confidence (highest first)
+    const sorted = [...plates].sort((a, b) => b.confidence - a.confidence);
     
-    return Array.from(seen.values());
+    // Get the best plate
+    const best = sorted[0];
+    
+    // Only include if it has reasonable confidence
+    if (best.confidence < 0.3) return [];
+    
+    // Check if other plates are similar (within 80% text match)
+    const bestText = best.plateText.substring(0, 6);
+    const uniquePlates = sorted.filter(plate => {
+      const text = plate.plateText.substring(0, 6);
+      return text === bestText || plate.confidence > best.confidence * 0.9;
+    });
+    
+    // Return only the highest confidence one
+    return [best];
   }
 
   /**

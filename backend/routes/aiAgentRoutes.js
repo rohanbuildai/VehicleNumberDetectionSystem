@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { upload, memoryUpload } = require('../middleware/upload');
 const aiAgentController = require('../controllers/aiAgentController');
 
 // ─── Image Analysis Agent ───────────────────────────────────────────────────
@@ -15,14 +16,14 @@ const aiAgentController = require('../controllers/aiAgentController');
  * Analyze an image for characteristics and quality
  * @body {file} image - Image file to analyze
  */
-router.post('/analyze', protect, aiAgentController.analyzeImage);
+router.post('/analyze', protect, upload.single('image'), aiAgentController.analyzeImage);
 
 /**
  * POST /api/v1/ai/analyze-batch
  * Batch analyze multiple images
  * @body {file[]} images - Array of images to analyze
  */
-router.post('/analyze-batch', protect, aiAgentController.batchAnalyzeImages);
+router.post('/analyze-batch', protect, upload.array('images', 10), aiAgentController.batchAnalyzeImages);
 
 // ─── Anomaly Detection Agent ─────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ router.post('/analyze-batch', protect, aiAgentController.batchAnalyzeImages);
  * Detect anomalies in an image
  * @body {file} image - Image file to check for anomalies
  */
-router.post('/detect-anomalies', protect, aiAgentController.detectAnomalies);
+router.post('/detect-anomalies', protect, upload.single('image'), aiAgentController.detectAnomalies);
 
 /**
  * POST /api/v1/ai/validate
@@ -48,7 +49,7 @@ router.post('/validate', protect, aiAgentController.validateDetection);
  * @body {file} image - Image to process
  * @body {string} strategy - Processing strategy (fast/balanced/quality)
  */
-router.post('/smart-process', protect, aiAgentController.smartProcess);
+router.post('/smart-process', protect, upload.single('image'), aiAgentController.smartProcess);
 
 /**
  * GET /api/v1/ai/recommendations/:detectionId
@@ -61,7 +62,7 @@ router.get('/recommendations/:detectionId', protect, aiAgentController.getRecomm
  * Compare different processing strategies
  * @body {file} image - Image to test
  */
-router.post('/compare-strategies', protect, aiAgentController.compareStrategies);
+router.post('/compare-strategies', protect, upload.single('image'), aiAgentController.compareStrategies);
 
 // ─── Prediction Agent ─────────────────────────────────────────────────────────
 

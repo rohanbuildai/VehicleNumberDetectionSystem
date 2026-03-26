@@ -43,19 +43,20 @@ class AIDetectionService {
   async detectWithAPI(imagePath, startTime) {
     try {
       logger.info(`API URL: ${this.apiUrl}`);
-      logger.info(`Token first 10 chars: ${this.apiToken.substring(0, 10)}`);
       
-      // Read image as base64
+      // Read image
       const imageBuffer = await fs.readFile(imagePath);
-      const base64Image = imageBuffer.toString('base64');
       logger.info(`Image size: ${imageBuffer.length} bytes`);
       
-      const response = await axios.post(this.apiUrl, {
-        image: base64Image
-      }, {
+      // Send as multipart form data - API expects this format
+      const FormData = require('form-data');
+      const form = new FormData();
+      form.append('image', imageBuffer, { filename: 'image.jpg' });
+      
+      const response = await axios.post(this.apiUrl, form, {
         headers: {
           'Authorization': `Token ${this.apiToken}`,
-          'Content-Type': 'application/json'
+          ...form.getHeaders()
         },
         timeout: 30000
       });
